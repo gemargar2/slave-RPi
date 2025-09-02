@@ -1,24 +1,24 @@
 {
 	"device": {
-		"ID": "14",
-	"name": "slave2",
+		"ID": "13",
+	"name": "slave1",
 		"description": "This is the one and only Power Park Controller (PPC) slave for the whole demo project",
-		"nominal_power":  "30",
+		"nominal_power": "20",
 		"has_solar_sensor": "False",
 		"has_temperature_sensor":"False",
 		"delay_time_T1" : "1000",
 		"devices": {
 			"Device1": {
-				"ID": "3",
-				"name": "Fronius3",
-				"nominal_power": "12",
+				"ID": "1",
+				"name": "Fronius1",
+				"nominal_power": "15",
 				"setpoint_scale": "100",
 				"sending_percent": "True"
 			},
 			"Device2": {
-				"ID": "4",
-				"name": "Fronius4",
-				"nominal_power": "18",
+				"ID": "2",
+				"name": "Fronius2",
+				"nominal_power": "5",
 				"setpoint_scale": "100",
 				"sending_percent": "True"
 			}

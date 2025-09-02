@@ -9,7 +9,7 @@ class Window_class:
 
 	def __init__(self):
 		# --- init plot --------------
-		self.fig = plt.figure(figsize=(8, 4))
+		self.fig = plt.figure(figsize=(8, 3.5))
 		
 		mngr = plt.get_current_fig_manager()
 		mngr.window.geometry("+50+100")
@@ -82,7 +82,7 @@ class Window_class:
 		self.dev1_q_sp_data.append(obj.dev_q_sp[0])
 		self.dev2_q_sp_data.append(obj.dev_q_sp[1])
 
-		# Plot stuff
+		# Plot stuff 
 		# Active power
 		self.ln11.set_data(self.x_data, self.master_p_sp_data)
 		self.ln12.set_data(self.x_data, self.dev1_p_sp_data)

@@ -14,15 +14,25 @@ class Slave_class:
 		self.installed = [] # nominal power of inverters
 		self.contribution = [] # percentage of contribution to the final power output
 		self.device_id = []
-		self.device_state = zeros(self.number)
-		self.device_p = zeros(self.number)
-		self.device_q = zeros(self.number)
+		# Inverter signals
+		self.dev_pac = zeros(self.number) # P actual
+		self.dev_qac = zeros(self.number) # Q actual
+		self.dev_pmax = zeros(self.number) # Pmax available
+		self.dev_qmax = zeros(self.number) # Qmax available
+		self.dev_qmin = zeros(self.number) # Qmin available
+		self.dev_status = zeros(self.number) # Operation status
+		self.dev_connx = zeros(self.number) # Connection status
+		# Setpoints
 		self.dev_p_sp = zeros(self.number)
 		self.dev_q_sp = zeros(self.number)
 		# Summary
-		self.slave_p = 0
-		self.slave_q = 0
-		self.p_avail = 0
+		self.slav_pac = 0
+		self.slav_qac = 0
+		self.slav_pmax = 0
+		self.slav_qmax = 0
+		self.slav_qmin = 0
+		self.ippm_switch = 0
+		self.status_ippm = 0
 		# Master setpoints
 		self.master_p_in_sp = 0
 		self.master_q_in_sp = 0
@@ -48,34 +58,33 @@ class Slave_class:
 	def recalc_contribution(self, window_obj):
 		# Recalculate available power yield
 		index = 0
-		new_p_avail = 0
+		new_pmax = 0
 		for i in self.devices:
 			self.contribution[index] = 0.0
-			if self.device_state[index] == 0:
-				new_p_avail += int(self.devices[i]["nominal_power"])
+			if self.dev_status[index] == 0:
+				new_pmax += int(self.devices[i]["nominal_power"])
 			index += 1
 
 		# Calculate new contribution
 		index = 0
 		for i in self.devices:
 			if self.device_state[index] == 0:
-				self.contribution[index] = float(self.devices[i]["nominal_power"])/new_p_avail
+				self.contribution[index] = float(self.devices[i]["nominal_power"])/new_pmax
 			index += 1
 		
-		self.p_avail = new_p_avail
-		total_production = round(self.device_p[0] + self.device_p[1], 2)
+		self.slav_pmax = new_pmax
+		total_production = round(self.dev_pac[0] + self.dev_pac[1], 2)
 		total_setpoint = round(self.master_p_in_sp * self.P_nominal, 2)
 
-		if self.device_state[0] == 0: dev1_state = "ON"
-		else: dev1_state = "OFF"
-		if self.device_state[1] == 0: dev2_state = "ON"
-		else: dev1_state = "OFF"
+		if self.dev_status[0] == 0: dev1_status = "ON"
+		else: dev1_status = "OFF"
+		if self.dev_status[1] == 0: dev2_status = "ON"
+		else: dev1_status = "OFF"
 
-		slave1_str = f'Slave 1 P={total_production} / S={total_setpoint} / A={self.p_avail} / I={self.P_nominal}'
-		dev1_str = f'dev1 ({dev1_state}) S={round(self.dev_p_sp[0]*self.P_nominal, 2)} / I={self.installed[0]}'
-		dev2_str = f'dev2 ({dev2_state}) S={round(self.dev_p_sp[1]*self.P_nominal, 2)} / I={self.installed[1]}'
+		slave1_str = f'Slave 1 P={total_production} / S={total_setpoint} / A={self.slav_pmax} / I={self.P_nominal}'
+		dev1_str = f'dev1 ({dev1_status}) S={round(self.dev_p_sp[0]*self.P_nominal, 2)} / I={self.installed[0]}'
+		dev2_str = f'dev2 ({dev2_status}) S={round(self.dev_p_sp[1]*self.P_nominal, 2)} / I={self.installed[1]}'
 		window_obj.fig.suptitle(f'{slave1_str} \n {dev1_str} \n {dev2_str}')
-
 
 
 
