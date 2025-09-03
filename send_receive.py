@@ -5,27 +5,40 @@ from slave_class import *
 
 def recalc_contribution(slav_obj, window_obj):
 	# Recalculate available power yield
-	slav_obj.slav_pmax = 0
-	for index in range(2):
-		slav_obj.contribution[index] = 0.0
+	slav_obj.total_pmax = 0
+	slav_obj.total_qmax = 0
+	slav_obj.total_qmin = 0
+	for index in range(slav_obj.number):
+		slav_obj.pi_per[index] = 0.0
 		if slav_obj.dev_status[index] == 0:
-			slav_obj.slav_pmax += slav_obj.dev_pmax[index]
+			slav_obj.total_pmax += slav_obj.dev_pmax[index]
+			slav_obj.total_qmax += slav_obj.dev_qmax[index]
+			slav_obj.total_qmin += slav_obj.dev_qmin[index]			
 
 	# Calculate new contribution
-	for index in range(2):
+	for index in range(slav_obj.number):
 		if slav_obj.dev_status[index] == 0:
-			if slav_obj.slav_pmax != 0:
-				slav_obj.contribution[index] = float(slav_obj.dev_pmax[index]/slav_obj.slav_pmax)
+			if slav_obj.total_pmax != 0: slav_obj.pi_per[index] = slav_obj.dev_pmax[index]/slav_obj.total_pmax
+			if slav_obj.total_qmax != 0: slav_obj.qi_per[index] = slav_obj.dev_qmax[index]/slav_obj.total_qmax
+			if slav_obj.total_qmin != 0: slav_obj.qa_per[index] = slav_obj.dev_qmin[index]/slav_obj.total_qmin
 	
-	total_production = round(slav_obj.dev_pac[0] + slav_obj.dev_pac[1], 2)
-	total_setpoint = round(slav_obj.master_p_in_sp * slav_obj.P_nominal, 2)
+	# Calculate total production
+	slav_obj.total_pac = 0
+	slav_obj.total_qac = 0
+	for index in range(slav_obj.number):
+		slav_obj.total_pac += slav_obj.dev_pac[index]
+		slav_obj.total_qac += slav_obj.dev_qac[index]
+	
+	total_setpoint = round(slav_obj.master_p_in_sp * slav_obj.S_nom, 2)
+
+	# Window title
 	if slav_obj.dev_status[0] == 0: dev1_status = "ON"
 	else: dev1_status = "OFF"
 	if slav_obj.dev_status[1] == 0: dev2_status = "ON"
 	else: dev1_status = "OFF"
-	slave1_str = f'Slave 1 P={total_production} / S={total_setpoint} / A={slav_obj.slav_pmax} / I={slav_obj.P_nominal}'
-	dev1_str = f'dev1 ({dev1_status}) S={round(slav_obj.dev_p_sp[0]*slav_obj.P_nominal, 2)} / I={slav_obj.installed[0]}'
-	dev2_str = f'dev2 ({dev2_status}) S={round(slav_obj.dev_p_sp[1]*slav_obj.P_nominal, 2)} / I={slav_obj.installed[1]}'
+	slave1_str = f'Slave 1 P={round(slav_obj.total_pac, 2)} / S={total_setpoint} / A={slav_obj.total_pmax} / I={slav_obj.S_nom}'
+	dev1_str = f'dev1 ({dev1_status}) S={round(slav_obj.dev_p_sp[0]*slav_oblj.S_nom, 2)} / I={slav_obj.installed[0]}'
+	dev2_str = f'dev2 ({dev2_status}) S={round(slav_obj.dev_p_sp[1]*slav_obj.S_nom, 2)} / I={slav_obj.installed[1]}'
 	window_obj.fig.suptitle(f'{slave1_str} \n {dev1_str} \n {dev2_str}')
 
 def signals_rx(slave_obj, window_obj):
@@ -73,29 +86,32 @@ def signals_tx(slave_obj):
 	while True:
 		# Tick
 		sleep(0.1)
-		for i in range(2):
+		for i in range(slave_obj.number):
 			dest = "Inverter_" + str(i+1)
-			# Distribution
-			slave_obj.dev_p_sp[i] = slave_obj.master_p_in_sp * slave_obj.contribution[i]
-			if slave_obj.dev_p_sp[i] * slave_obj.P_nominal >= slave_obj.installed[i]:
-				slave_obj.dev_p_sp[i] = slave_obj.installed[i]/slave_obj.P_nominal
-			slave_obj.dev_q_sp[i] = slave_obj.master_q_in_sp * slave_obj.contribution[i]
+			# Distribution for p inj, q inj and q abs
+			slave_obj.dev_p_sp[i] = slave_obj.master_p_in_sp * slave_obj.pi_per[i]
+			if slave_obj.master_q_in_sp < 0: slave_obj.dev_q_sp[i] = slave_obj.master_q_in_sp * slave_obj.qa_per[i]
+			else: slave_obj.dev_q_sp[i] = slave_obj.master_q_in_sp * slave_obj.qi_per[i]
+			# Check limits
+			if slave_obj.dev_p_sp[i]*slave_obj.S_nom > slave_obj.dev_pmax[i]: slave_obj.dev_p_sp[i] = slave_obj.dev_pmax[i]/slave_obj.S_nom 
+			if slave_obj.dev_q_sp[i]*slave_obj.S_nom  > slave_obj.dev_qmax[i]: slave_obj.dev_q_sp[i] = slave_obj.dev_qmax[i]/slave_obj.S_nom 
+			if slave_obj.dev_q_sp[i]*slave_obj.S_nom  < slave_obj.dev_qmin[i]: slave_obj.dev_q_sp[i] = slave_obj.dev_qmin[i]/slave_obj.S_nom 
 			# Send json
-			message1 = { "destination": dest, "value": str(slave_obj.dev_p_sp[i]*slave_obj.P_nominal), "value_name": "P_SP_slave" }
-			message2 = { "destination": dest, "value": str(slave_obj.dev_q_sp[i]*slave_obj.P_nominal), "value_name": "Q_SP_slave" }
+			message1 = { "destination": dest, "value": str(slave_obj.dev_p_sp[i]*slave_obj.S_nom), "value_name": "P_SP_slave" }
+			message2 = { "destination": dest, "value": str(slave_obj.dev_q_sp[i]*slave_obj.S_nom), "value_name": "Q_SP_slave" }
 			try:
 				socket_tx.send_json(message1, zmq.NOBLOCK)
 				socket_tx.send_json(message2, zmq.NOBLOCK)
-				if printMessages: print("Inverter messages transmitted successfully")
+				if printMessages: print("Success")
 			except:
-				if printMessages: print("Inverter messages transmission failed")
+				if printMessages: print("Failed")
 		# Send to master
-		message1 = { "destination": "master", "value_name": "Total_Pmax_available", "value": str(slave_obj.slav_pmax) }
-		message2 = { "destination": "master", "value_name": "Total_Qmax_available", "value": str(slave_obj.slav_qmax) }
-		message3 = { "destination": "master", "value_name": "Total_Qmin_available", "value": str(slave_obj.slav_qmin) }
+		message1 = { "destination": "master", "value_name": "Total_Pmax_available", "value": str(slave_obj.total_pmax) }
+		message2 = { "destination": "master", "value_name": "Total_Qmax_available", "value": str(slave_obj.total_qmax) }
+		message3 = { "destination": "master", "value_name": "Total_Qmin_available", "value": str(slave_obj.total_qmin) }
 		message4 = { "destination": "master", "value_name": "status_ippm", "value": str(slave_obj.status_ippm) }
-		message5 = { "destination": "master", "value_name": "P_generated", "value": str(slave_obj.slav_pac) }
-		message6 = { "destination": "master", "value_name": "Q_generated", "value": str(slave_obj.slav_qac) }
+		message5 = { "destination": "master", "value_name": "P_generated", "value": str(slave_obj.total_pac) }
+		message6 = { "destination": "master", "value_name": "Q_generated", "value": str(slave_obj.total_qac) }
 		message7 = { "destination": "master", "value_name": "ippm_switch", "value": str(slave_obj.ippm_switch) }
 		try:
 			socket_tx.send_json(message1, zmq.NOBLOCK)
@@ -108,3 +124,5 @@ def signals_tx(slave_obj):
 			if printMessages: print("Master messages transmitted successfully")
 		except:
 			if printMessages: print("Master messages transmission failed")
+
+
