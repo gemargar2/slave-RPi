@@ -9,7 +9,6 @@ def recalc_contribution(slav_obj, window_obj):
 	slav_obj.total_qmax = 0
 	slav_obj.total_qmin = 0
 	for index in range(slav_obj.number):
-		slav_obj.pi_per[index] = 0.0
 		if slav_obj.dev_status[index] == 0:
 			slav_obj.total_pmax += slav_obj.dev_pmax[index]
 			slav_obj.total_qmax += slav_obj.dev_qmax[index]
@@ -17,6 +16,9 @@ def recalc_contribution(slav_obj, window_obj):
 
 	# Calculate new contribution
 	for index in range(slav_obj.number):
+		slav_obj.pi_per[index] = 0.0
+		slav_obj.qi_per[index] = 0.0
+		slav_obj.qa_per[index] = 0.0
 		if slav_obj.dev_status[index] == 0:
 			if slav_obj.total_pmax != 0: slav_obj.pi_per[index] = slav_obj.dev_pmax[index]/slav_obj.total_pmax
 			if slav_obj.total_qmax != 0: slav_obj.qi_per[index] = slav_obj.dev_qmax[index]/slav_obj.total_qmax
@@ -28,18 +30,19 @@ def recalc_contribution(slav_obj, window_obj):
 	for index in range(slav_obj.number):
 		slav_obj.total_pac += slav_obj.dev_pac[index]
 		slav_obj.total_qac += slav_obj.dev_qac[index]
-	
-	total_setpoint = round(slav_obj.master_p_in_sp * slav_obj.S_nom, 2)
 
 	# Window title
 	if slav_obj.dev_status[0] == 0: dev1_status = "ON"
 	else: dev1_status = "OFF"
 	if slav_obj.dev_status[1] == 0: dev2_status = "ON"
 	else: dev1_status = "OFF"
-	slave1_str = f'Slave 1 P={round(slav_obj.total_pac, 2)} / S={total_setpoint} / A={slav_obj.total_pmax} / I={slav_obj.S_nom}'
-	dev1_str = f'dev1 ({dev1_status}) S={round(slav_obj.dev_p_sp[0]*slav_oblj.S_nom, 2)} / I={slav_obj.installed[0]}'
-	dev2_str = f'dev2 ({dev2_status}) S={round(slav_obj.dev_p_sp[1]*slav_obj.S_nom, 2)} / I={slav_obj.installed[1]}'
-	window_obj.fig.suptitle(f'{slave1_str} \n {dev1_str} \n {dev2_str}')
+	
+	slave1_r = f'Slave1({slav_obj.total_pmax}/{slav_obj.total_qmax}/{slav_obj.total_qmin})'
+	dev1_r = f'dev1({slav_obj.dev_pmax[0]}/{slav_obj.dev_qmax[0]}/{slav_obj.dev_qmin[0]})'
+	dev2_r = f'dev2({slav_obj.dev_pmax[1]}/{slav_obj.dev_qmax[1]}/{slav_obj.dev_qmin[1]})'
+	dev1_p = f'dev1({int(slav_obj.pi_per[0]*100)}/{int(slav_obj.qi_per[0]*100)}/{int(slav_obj.qa_per[0]*100)})'
+	dev2_p = f'dev2({int(slav_obj.pi_per[1]*100)}/{int(slav_obj.qi_per[1]*100)}/{int(slav_obj.qa_per[1]*100)})'
+	window_obj.fig.suptitle(f'Availability (MW/MVAR): {slave1_r}, {dev1_r}, {dev2_r} \n Contribution (%): {dev1_p} {dev2_p}')
 
 def signals_rx(slave_obj, window_obj):
 	# Zero MQ is the messaging protocol used to communicate with the slave devices.
@@ -90,15 +93,17 @@ def signals_tx(slave_obj):
 			dest = "Inverter_" + str(i+1)
 			# Distribution for p inj, q inj and q abs
 			slave_obj.dev_p_sp[i] = slave_obj.master_p_in_sp * slave_obj.pi_per[i]
-			if slave_obj.master_q_in_sp < 0: slave_obj.dev_q_sp[i] = slave_obj.master_q_in_sp * slave_obj.qa_per[i]
-			else: slave_obj.dev_q_sp[i] = slave_obj.master_q_in_sp * slave_obj.qi_per[i]
+			if slave_obj.master_q_in_sp < 0:
+				slave_obj.dev_q_sp[i] = slave_obj.master_q_in_sp * slave_obj.qa_per[i]
+			else:
+				slave_obj.dev_q_sp[i] = slave_obj.master_q_in_sp * slave_obj.qi_per[i]
 			# Check limits
-			if slave_obj.dev_p_sp[i]*slave_obj.S_nom > slave_obj.dev_pmax[i]: slave_obj.dev_p_sp[i] = slave_obj.dev_pmax[i]/slave_obj.S_nom 
-			if slave_obj.dev_q_sp[i]*slave_obj.S_nom  > slave_obj.dev_qmax[i]: slave_obj.dev_q_sp[i] = slave_obj.dev_qmax[i]/slave_obj.S_nom 
-			if slave_obj.dev_q_sp[i]*slave_obj.S_nom  < slave_obj.dev_qmin[i]: slave_obj.dev_q_sp[i] = slave_obj.dev_qmin[i]/slave_obj.S_nom 
+			if slave_obj.dev_p_sp[i] > slave_obj.dev_pmax[i]: slave_obj.dev_p_sp[i] = slave_obj.dev_pmax[i]
+			if slave_obj.dev_q_sp[i]  > slave_obj.dev_qmax[i]: slave_obj.dev_q_sp[i] = slave_obj.dev_qmax[i]
+			if slave_obj.dev_q_sp[i]  < slave_obj.dev_qmin[i]: slave_obj.dev_q_sp[i] = slave_obj.dev_qmin[i]
 			# Send json
-			message1 = { "destination": dest, "value": str(slave_obj.dev_p_sp[i]*slave_obj.S_nom), "value_name": "P_SP_slave" }
-			message2 = { "destination": dest, "value": str(slave_obj.dev_q_sp[i]*slave_obj.S_nom), "value_name": "Q_SP_slave" }
+			message1 = { "destination": dest, "value": str(slave_obj.dev_p_sp[i]), "value_name": "P_SP_slave" }
+			message2 = { "destination": dest, "value": str(slave_obj.dev_q_sp[i]), "value_name": "Q_SP_slave" }
 			try:
 				socket_tx.send_json(message1, zmq.NOBLOCK)
 				socket_tx.send_json(message2, zmq.NOBLOCK)

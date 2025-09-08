@@ -25,7 +25,7 @@ class Window_class:
 
 		# set label names
 		self.ax1.set_xlabel("t")
-		self.ax1.set_ylabel("(p.u)")
+		self.ax1.set_ylabel("(MW)")
 		self.ax2.set_xlabel("t")
 		self.ax2.set_ylabel("(p.u)")
 
@@ -35,7 +35,7 @@ class Window_class:
 
 		# set axis limits
 		self.ax1.set_xlim(0, xmax)
-		self.ax1.set_ylim(-0.1, 1.1)
+		self.ax1.set_ylim(-2, 22)
 		self.ax2.set_xlim(0, xmax)
 		self.ax2.set_ylim(-0.4, 0.4)
 
