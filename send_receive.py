@@ -53,9 +53,7 @@ def signals_rx(slave_obj, window_obj):
 
 	while True:
 		message = socket_rx.recv_json()
-		# print(message)
 		if message["origin"] == "master":
-			# print(message)
 			if message['value_name'] == 'P_SP_master': slave_obj.master_p_in_sp = float(message['value'])
 			elif message['value_name'] == 'Q_SP_master': slave_obj.master_q_in_sp = float(message['value'])
 		elif message["origin"] == "Inverter_1":
@@ -74,6 +72,13 @@ def signals_rx(slave_obj, window_obj):
 			elif message['value_name'] == "Total_Qmin_available": slave_obj.dev_qmin[1] = float(message['value'])
 			elif message['value_name'] == "Operation_Status": slave_obj.dev_status[1] = float(message['value'])
 			elif message['value_name'] == "Inverter_connected": slave_obj.dev_connx[1] = float(message['value'])
+		elif message["origin"] == "MV_Meter":
+			if message['value_name'] == "P_generated": slave_obj.total_pac = float(message['value'])
+			elif message['value_name'] == "Q_generated": slave_obj.total_qac = float(message['value'])
+			elif message['value_name'] == "Voltage_3_ph": pass
+			elif message['value_name'] == "IAC_rms": pass
+			elif message['value_name'] == "status_ippm": slave_obj.status_ippm = int(message['value'])
+			elif message['value_name'] == "ippm_switch": slave_obj.ippm_switch = int(message['value'])
 		# Change title
 		recalc_contribution(slave_obj, window_obj)
 		# Upon receiving a new value re-calculate

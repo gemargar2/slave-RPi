@@ -35,9 +35,9 @@ class Window_class:
 
 		# set axis limits
 		self.ax1.set_xlim(0, xmax)
-		self.ax1.set_ylim(-2, 22)
+		self.ax1.set_ylim(-2, 32)
 		self.ax2.set_xlim(0, xmax)
-		self.ax2.set_ylim(-0.4, 0.4)
+		self.ax2.set_ylim(-10, 10)
 
 		self.ln11, = self.ax1.plot([], [], "r-", label='master')
 		self.ln12, = self.ax1.plot([], [], "b-", label='dev1')
