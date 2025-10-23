@@ -8,18 +8,19 @@ def recalc_contribution(slav_obj, window_obj):
 	slav_obj.total_pmax = 0
 	slav_obj.total_qmax = 0
 	slav_obj.total_qmin = 0
+	slav_obj.connection = True
 	for index in range(slav_obj.number):
-		if slav_obj.dev_status[index] == 0:
+		if slav_obj.dev_status[index] == 1:
 			slav_obj.total_pmax += slav_obj.dev_pmax[index]
 			slav_obj.total_qmax += slav_obj.dev_qmax[index]
-			slav_obj.total_qmin += slav_obj.dev_qmin[index]			
-
+			slav_obj.total_qmin += slav_obj.dev_qmin[index]
+	
 	# Calculate new contribution
 	for index in range(slav_obj.number):
 		slav_obj.pi_per[index] = 0.0
 		slav_obj.qi_per[index] = 0.0
 		slav_obj.qa_per[index] = 0.0
-		if slav_obj.dev_status[index] == 0:
+		if slav_obj.dev_status[index] == 1:
 			if slav_obj.total_pmax != 0: slav_obj.pi_per[index] = slav_obj.dev_pmax[index]/slav_obj.total_pmax
 			if slav_obj.total_qmax != 0: slav_obj.qi_per[index] = slav_obj.dev_qmax[index]/slav_obj.total_qmax
 			if slav_obj.total_qmin != 0: slav_obj.qa_per[index] = slav_obj.dev_qmin[index]/slav_obj.total_qmin
@@ -44,7 +45,7 @@ def recalc_contribution(slav_obj, window_obj):
 	dev2_p = f'dev2({int(slav_obj.pi_per[1]*100)}/{int(slav_obj.qi_per[1]*100)}/{int(slav_obj.qa_per[1]*100)})'
 	window_obj.fig.suptitle(f'Availability (MW/MVAR): {slave1_r}, {dev1_r}, {dev2_r} \n Contribution (%): {dev1_p} {dev2_p}')
 
-def signals_rx(slave_obj, window_obj):
+def signals_rx(slave_obj, window_obj): 
 	# Zero MQ is the messaging protocol used to communicate with the slave devices.
 	context_rx = zmq.Context()
 	socket_rx = context_rx.socket(zmq.PULL)
@@ -56,22 +57,6 @@ def signals_rx(slave_obj, window_obj):
 		if message["origin"] == "master":
 			if message['value_name'] == 'P_SP_master': slave_obj.master_p_in_sp = float(message['value'])
 			elif message['value_name'] == 'Q_SP_master': slave_obj.master_q_in_sp = float(message['value'])
-		elif message["origin"] == "Inverter_1":
-			if message['value_name'] == "Total_P_ac": slave_obj.dev_pac[0] = float(message['value'])
-			elif message['value_name'] == "Total_Q_ac": slave_obj.dev_qac[0] = float(message['value'])
-			elif message['value_name'] == "Total_Pmax_available": slave_obj.dev_pmax[0] = float(message['value'])
-			elif message['value_name'] == "Total_Qmax_available": slave_obj.dev_qmax[0] = float(message['value'])
-			elif message['value_name'] == "Total_Qmin_available": slave_obj.dev_qmin[0] = float(message['value'])
-			elif message['value_name'] == "Operation_Status": slave_obj.dev_status[0] = float(message['value'])
-			elif message['value_name'] == "Inverter_connected": slave_obj.dev_connx[0] = float(message['value'])
-		elif message["origin"] == "Inverter_2":
-			if message['value_name'] == "Total_P_ac": slave_obj.dev_pac[1] = float(message['value'])
-			elif message['value_name'] == "Total_Q_ac": slave_obj.dev_qac[1] = float(message['value'])
-			elif message['value_name'] == "Total_Pmax_available": slave_obj.dev_pmax[1] = float(message['value'])
-			elif message['value_name'] == "Total_Qmax_available": slave_obj.dev_qmax[1] = float(message['value'])
-			elif message['value_name'] == "Total_Qmin_available": slave_obj.dev_qmin[1] = float(message['value'])
-			elif message['value_name'] == "Operation_Status": slave_obj.dev_status[1] = float(message['value'])
-			elif message['value_name'] == "Inverter_connected": slave_obj.dev_connx[1] = float(message['value'])
 		elif message["origin"] == "MV_Meter":
 			if message['value_name'] == "P_generated": slave_obj.total_pac = float(message['value'])
 			elif message['value_name'] == "Q_generated": slave_obj.total_qac = float(message['value'])
@@ -79,6 +64,17 @@ def signals_rx(slave_obj, window_obj):
 			elif message['value_name'] == "IAC_rms": pass
 			elif message['value_name'] == "status_ippm": slave_obj.status_ippm = int(message['value'])
 			elif message['value_name'] == "ippm_switch": slave_obj.ippm_switch = int(message['value'])
+
+		for i in range(slave_obj.number):
+			sender = "Inverter_" + str(i+1)
+			if message["origin"] == sender:
+				if message['value_name'] == "Total_P_ac": slave_obj.dev_pac[i] = float(message['value'])
+				elif message['value_name'] == "Total_Q_ac": slave_obj.dev_qac[i] = float(message['value'])
+				elif message['value_name'] == "Total_Pmax_available": slave_obj.dev_pmax[i] = float(message['value'])
+				elif message['value_name'] == "Total_Qmax_available": slave_obj.dev_qmax[i] = float(message['value'])
+				elif message['value_name'] == "Total_Qmin_available": slave_obj.dev_qmin[i] = float(message['value'])
+				elif message['value_name'] == "Operation_Status": slave_obj.dev_status[i] = float(message['value'])
+				elif message['value_name'] == "Inverter_connected": slave_obj.dev_connx[i] = float(message['value'])
 		# Change title
 		recalc_contribution(slave_obj, window_obj)
 		# Upon receiving a new value re-calculate

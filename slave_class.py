@@ -36,6 +36,7 @@ class Slave_class:
 		self.total_qmin = 0 # MVAR
 		self.ippm_switch = 1 # 0=Open / 1=Closed
 		self.status_ippm = 1 # 0=OFF / 1=ON
+		self.connection = True # Connection health
 		# Master setpoints
 		self.master_p_in_sp = 0
 		self.master_q_in_sp = 0
