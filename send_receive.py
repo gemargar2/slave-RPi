@@ -54,6 +54,22 @@ def signals_rx(slave_obj, window_obj):
 
 	while True:
 		message = socket_rx.recv_json()
+				
+		origin = ''
+		# Check for connection status
+		if message['value_name'] == 'df925a75-00a7-40ae-8ed9-cb5008d725ce':
+			if message['origin'] == 'master': origin = 'master'
+			elif message['origin'] == 'localPlatform': origin = 'SCADA'
+			elif message['origin'] == 'MV_Meter': origin = 'MV_Meter'
+			elif message['origin'] == 'Meteo': origin = 'Meteo'
+			else:
+				# Iterate through slaves
+				for i in range(slave_obj.number):
+					label = 'Inverter_' + str(i+1)
+					if message['origin'] == label: origin = label
+			if message['status'] == True: print(f"{origin} connection ok")
+			else: print(f"{origin} connection not ok")
+
 		if message["origin"] == "master":
 			if message['value_name'] == 'P_SP_master': slave_obj.master_p_in_sp = float(message['value'])
 			elif message['value_name'] == 'Q_SP_master': slave_obj.master_q_in_sp = float(message['value'])
@@ -74,7 +90,7 @@ def signals_rx(slave_obj, window_obj):
 				elif message['value_name'] == "Total_Qmax_available": slave_obj.dev_qmax[i] = float(message['value'])
 				elif message['value_name'] == "Total_Qmin_available": slave_obj.dev_qmin[i] = float(message['value'])
 				elif message['value_name'] == "Operation_Status": slave_obj.dev_status[i] = float(message['value'])
-				elif message['value_name'] == "Inverter_connected": slave_obj.dev_connx[i] = float(message['value'])
+				elif message['value_name'] == "Inverter_Connected": slave_obj.dev_connx[i] = float(message['value'])
 		# Change title
 		recalc_contribution(slave_obj, window_obj)
 		# Upon receiving a new value re-calculate
