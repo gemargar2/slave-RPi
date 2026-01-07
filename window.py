@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-from collections import deque
 
 xmax = 40 # seconds
 smax = 400 # samples
@@ -35,9 +34,9 @@ class Window_class:
 
 		# set axis limits
 		self.ax1.set_xlim(0, xmax)
-		self.ax1.set_ylim(-2, 32)
+		self.ax1.set_ylim(-1, 12)
 		self.ax2.set_xlim(0, xmax)
-		self.ax2.set_ylim(-10, 10)
+		self.ax2.set_ylim(-5, 5)
 
 		self.ln11, = self.ax1.plot([], [], "r-", label='master')
 		self.ln12, = self.ax1.plot([], [], "b-", label='dev1')
@@ -59,39 +58,18 @@ class Window_class:
 		#     wspace=0.2
 		# )
 
-	# Index
-	x_data = deque([], maxlen=smax)
-	# Active power
-	master_p_sp_data = deque([], maxlen=smax)
-	dev1_p_sp_data = deque([], maxlen=smax)
-	dev2_p_sp_data = deque([], maxlen=smax)
-	# Reactive power
-	master_q_sp_data = deque([], maxlen=smax)
-	dev1_q_sp_data = deque([], maxlen=smax)
-	dev2_q_sp_data = deque([], maxlen=smax)
-
-	def plot_data(self, x, obj):
-		# Index
-		self.x_data.append(x)
-		# Active power
-		self.master_p_sp_data.append(obj.master_p_in_sp)
-		self.dev1_p_sp_data.append(obj.dev_p_sp[0])
-		self.dev2_p_sp_data.append(obj.dev_p_sp[1])
-		# Reactive power
-		self.master_q_sp_data.append(obj.master_q_in_sp)
-		self.dev1_q_sp_data.append(obj.dev_q_sp[0])
-		self.dev2_q_sp_data.append(obj.dev_q_sp[1])
-
+	def plot_data(self, obj):
+		x = obj.x
 		# Plot stuff 
 		# Active power
-		self.ln11.set_data(self.x_data, self.master_p_sp_data)
-		self.ln12.set_data(self.x_data, self.dev1_p_sp_data)
-		self.ln13.set_data(self.x_data, self.dev2_p_sp_data)
+		self.ln11.set_data(obj.x_data, obj.master_p_sp_data)
+		self.ln12.set_data(obj.x_data, obj.dev1_p_sp_data)
+		self.ln13.set_data(obj.x_data, obj.dev2_p_sp_data)
 		# Active power
-		self.ln21.set_data(self.x_data, self.master_q_sp_data)
-		self.ln22.set_data(self.x_data, self.dev1_q_sp_data)
-		self.ln23.set_data(self.x_data, self.dev2_q_sp_data)
-
+		self.ln21.set_data(obj.x_data, obj.master_q_sp_data)
+		self.ln22.set_data(obj.x_data, obj.dev1_q_sp_data)
+		self.ln23.set_data(obj.x_data, obj.dev2_q_sp_data)
+		
 		# Slide window
 		if x>=xmax:
 			# Active power

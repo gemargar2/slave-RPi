@@ -45,7 +45,19 @@ def recalc_contribution(slav_obj, window_obj):
 	dev2_p = f'dev2({int(slav_obj.pi_per[1]*100)}/{int(slav_obj.qi_per[1]*100)}/{int(slav_obj.qa_per[1]*100)})'
 	window_obj.fig.suptitle(f'Availability (MW/MVAR): {slave1_r}, {dev1_r}, {dev2_r} \n Contribution (%): {dev1_p} {dev2_p}')
 
-def signals_rx(slave_obj, window_obj): 
+	# Populate plot vectors
+	# Index
+	slav_obj.x_data.append(slav_obj.x)
+	# Active power
+	slav_obj.master_p_sp_data.append(slav_obj.master_p_in_sp)
+	slav_obj.dev1_p_sp_data.append(slav_obj.dev_p_sp[0])
+	slav_obj.dev2_p_sp_data.append(slav_obj.dev_p_sp[1])
+	# Reactive power
+	slav_obj.master_q_sp_data.append(slav_obj.master_q_in_sp)
+	slav_obj.dev1_q_sp_data.append(slav_obj.dev_q_sp[0])
+	slav_obj.dev2_q_sp_data.append(slav_obj.dev_q_sp[1])
+
+def signals_rx(slave_obj): 
 	# Zero MQ is the messaging protocol used to communicate with the slave devices.
 	context_rx = zmq.Context()
 	socket_rx = context_rx.socket(zmq.PULL)
@@ -67,12 +79,14 @@ def signals_rx(slave_obj, window_obj):
 				for i in range(slave_obj.number):
 					label = 'Inverter_' + str(i+1)
 					if message['origin'] == label: origin = label
-			if message['status'] == True: print(f"{origin} connection ok")
-			else: print(f"{origin} connection not ok")
+			#if message['status'] == True: print(f"{origin} connection ok")
+			#else: print(f"{origin} connection not ok")
 
 		if message["origin"] == "master":
 			if message['value_name'] == 'P_SP_master': slave_obj.master_p_in_sp = float(message['value'])
 			elif message['value_name'] == 'Q_SP_master': slave_obj.master_q_in_sp = float(message['value'])
+			elif message['value_name'] == 'Start': slave_obj.start = int(message['value'])
+			elif message['value_name'] == 'Stop': slave_obj.stop = int(message['value'])
 		elif message["origin"] == "MV_Meter":
 			if message['value_name'] == "P_generated": slave_obj.total_pac = float(message['value'])
 			elif message['value_name'] == "Q_generated": slave_obj.total_qac = float(message['value'])
@@ -91,10 +105,6 @@ def signals_rx(slave_obj, window_obj):
 				elif message['value_name'] == "Total_Qmin_available": slave_obj.dev_qmin[i] = float(message['value'])
 				elif message['value_name'] == "Operation_Status": slave_obj.dev_status[i] = float(message['value'])
 				elif message['value_name'] == "Inverter_Connected": slave_obj.dev_connx[i] = float(message['value'])
-		# Change title
-		recalc_contribution(slave_obj, window_obj)
-		# Upon receiving a new value re-calculate
-		# emulator_obj.hv_meter()
 
 def signals_tx(slave_obj):
 	# Zero MQ is the messaging protocol used to communicate with the slave devices.
@@ -121,9 +131,13 @@ def signals_tx(slave_obj):
 			# Send json
 			message1 = { "destination": dest, "value": str(slave_obj.dev_p_sp[i]), "value_name": "P_SP_slave" }
 			message2 = { "destination": dest, "value": str(slave_obj.dev_q_sp[i]), "value_name": "Q_SP_slave" }
+			message3 = { "destination": dest, "value": str(slave_obj.start), "value_name": "Start_inverter" }
+			message4 = { "destination": dest, "value": str(slave_obj.stop), "value_name": "Stop_inverter" }
 			try:
 				socket_tx.send_json(message1, zmq.NOBLOCK)
 				socket_tx.send_json(message2, zmq.NOBLOCK)
+				socket_tx.send_json(message3, zmq.NOBLOCK)
+				socket_tx.send_json(message4, zmq.NOBLOCK)
 				if printMessages: print("Success")
 			except:
 				if printMessages: print("Failed")

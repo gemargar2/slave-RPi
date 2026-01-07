@@ -1,5 +1,7 @@
 from numpy import zeros
+from collections import deque
 
+smax = 400 # samples
 printMessages = False
 
 class Slave_class:
@@ -7,7 +9,7 @@ class Slave_class:
 		# Store config data locally
 		self.configdata = config
 		self.slave_id = int(self.configdata["device"]["ID"])
-		self.S_nom = int(self.configdata["device"]["nominal_power"])
+		self.S_nom = float(self.configdata["device"]["nominal_power"])
 		self.devices = self.configdata["device"]["devices"]
 		self.number = len(self.devices) # number of inverters
 		# Inverters
@@ -40,6 +42,22 @@ class Slave_class:
 		# Master setpoints
 		self.master_p_in_sp = 0
 		self.master_q_in_sp = 0
+		self.start = 1
+		self.stop = 0
+		# Plot vectors
+		# Index
+		self.sample = 0
+		self.x = 0
+		self.x_data = deque([], maxlen=smax)
+		# Active power
+		self.master_p_sp_data = deque([], maxlen=smax)
+		self.dev1_p_sp_data = deque([], maxlen=smax)
+		self.dev2_p_sp_data = deque([], maxlen=smax)
+		# Reactive power
+		self.master_q_sp_data = deque([], maxlen=smax)
+		self.dev1_q_sp_data = deque([], maxlen=smax)
+		self.dev2_q_sp_data = deque([], maxlen=smax)
+		# Parse slave devices
 		self.connect_to_devices()
 
 	def connect_to_devices(self):
@@ -47,11 +65,11 @@ class Slave_class:
 		index = 0
 		for i in self.devices:
 			self.device_id.append(int(self.devices[i]["ID"]))
-			self.installed.append(int(self.devices[i]["nominal_power"]))
+			self.installed.append(float(self.devices[i]["nominal_power"]))
 			self.pi_per[index] = float(self.devices[i]["nominal_power"])/self.S_nom
 			self.qi_per[index] = float(self.devices[i]["nominal_power"])/self.S_nom
 			self.qa_per[index] = float(self.devices[i]["nominal_power"])/self.S_nom
-			p_sum += int(self.devices[i]["nominal_power"])
+			p_sum += float(self.devices[i]["nominal_power"])
 			index += 1
 
 		print(self.device_id)
