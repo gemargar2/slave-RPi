@@ -26,7 +26,7 @@ class Window_class:
 		self.ax1.set_xlabel("t")
 		self.ax1.set_ylabel("(MW)")
 		self.ax2.set_xlabel("t")
-		self.ax2.set_ylabel("(p.u)")
+		self.ax2.set_ylabel("(MVAR)")
 
 		# enable grid
 		self.ax1.grid(True)
